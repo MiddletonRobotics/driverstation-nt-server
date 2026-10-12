@@ -1,4 +1,11 @@
-use crate::{animation::{animation::Animation, larson_animation::{LarsonAnimation, LarsonBounceMode::{self, FRONT}}, rainbow_animation::{AnimationDirection, RainbowAnimation}, solid_animation::SolidAnimation, strobe_animation::StrobeAnimation}, color::RGBWColor};
+use crate::color::RGBWColor;
+use crate::animation::animation::Animation;
+use crate::animation::solid_animation::SolidAnimation;
+use crate::animation::strobe_animation::StrobeAnimation;
+use crate::animation::larson_animation::LarsonAnimation;
+use crate::animation::larson_animation::LarsonBounceMode;
+use crate::animation::rainbow_animation::RainbowAnimation;
+use crate::animation::rainbow_animation::AnimationDirection;
 
 pub const BUFFER_ARRAY_SIZE: usize = 22;
 
