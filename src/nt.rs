@@ -3,7 +3,6 @@ use nt_client::subscribe::ReceivedMessage;
 use nt_client::Client;
 use nt_client::NewClientOptions;
 use nt_client::NTAddr;
-use nt_client::subscribe::Subscriber;
 
 use crate::animation::animation::Animation;
 use crate::animation::larson_animation::LarsonAnimation;
@@ -120,7 +119,7 @@ fn setup(client: &Client) {
         let mut brightness_subscriber = brightness.subscribe(Default::default()).await.unwrap();
         let mut direction_subscriber = direction.subscribe(Default::default()).await.unwrap();
 
-        let mut data = Animation::default();
+        let mut data = AnimationData::default();
 
         loop {
             tokio::select! {
@@ -130,7 +129,7 @@ fn setup(client: &Client) {
                             data.animation_type = value;    
                         }
                     }
-                }
+                },
 
                 message = start_index_subscriber.recv() => {
                     if let Ok(ReceivedMessage::Updated((_topic, value))) = message {
@@ -138,7 +137,7 @@ fn setup(client: &Client) {
                             data.start_index = value;
                         }
                     }
-                }
+                },
 
                 message = end_index_subscriber.recv() => {
                     if let Ok(ReceivedMessage::Updated((_topic, value))) = message {
@@ -146,7 +145,7 @@ fn setup(client: &Client) {
                             data.end_index = value;
                         }
                     }
-                }
+                },
 
                 message = red_subscriber.recv() => {
                     if let Ok(ReceivedMessage::Updated((_topic, value))) = message {
@@ -154,7 +153,7 @@ fn setup(client: &Client) {
                             data.red = value;
                         }
                     }
-                }
+                },
 
                 message = green_subscriber.recv() => {
                     if let Ok(ReceivedMessage::Updated((_topic, value))) = message {
@@ -162,7 +161,7 @@ fn setup(client: &Client) {
                             data.green = value;
                         }
                     }
-                }
+                },
 
                 message = blue_subscriber.recv() => {
                     if let Ok(ReceivedMessage::Updated((_topic, value))) = message {
@@ -170,15 +169,15 @@ fn setup(client: &Client) {
                             data.blue = value;
                         }
                     }
-                }
+                },
 
-                message = white_subscriber_recv() => {
+                message = white_subscriber.recv() => {
                     if let Ok(ReceivedMessage::Updated((_topic, value))) = message {
                         if let Some(value) = u8::from_value(value) {
                             data.white = value;
                         }
                     }
-                }
+                },
 
                 message = frame_rate_subscriber.recv() => {
                     if let Ok(ReceivedMessage::Updated((_topic, value))) = message {
@@ -186,7 +185,7 @@ fn setup(client: &Client) {
                             data.frame_rate = value;
                         }
                     }
-                }
+                },
 
                 message = size_subscriber.recv() => {
                     if let Ok(ReceivedMessage::Updated((_topic, value))) = message {
@@ -194,7 +193,7 @@ fn setup(client: &Client) {
                             data.size = value;
                         }
                     }
-                }
+                },
 
                 message = bounce_mode_subscriber.recv() => {
                     if let Ok(ReceivedMessage::Updated((_topic, value))) = message {
@@ -202,17 +201,17 @@ fn setup(client: &Client) {
                             data.bounce_mode = value;
                         }
                     }
-                }
+                },
 
-                message brightness_subscriber.recv() => {
+                message = brightness_subscriber.recv() => {
                     if let Ok(ReceivedMessage::Updated((_topic, value))) = message {
                         if let Some(value) = f64::from_value(value) {
                             data.brightness = value;
                         }
                     }
-                }
+                },
 
-                message direction_subscriber.recv() => {
+                message = direction_subscriber.recv() => {
                     if let Ok(ReceivedMessage::Updated((_topic, value))) = message {
                         if let Some(value) = u8::from_value(value) {
                             data.direction = value;
