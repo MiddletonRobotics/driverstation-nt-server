@@ -15,14 +15,20 @@ jobs:
 
     steps:
       - uses: actions/checkout@v4
-
+      - name: Show checked out files
+        run: |
+          pwd
+          ls -la
+          git status
+          git log -1 --oneline
+    
       - name: Install system dependencies
         run: |
           sudo apt-get update
           sudo apt-get install -y libudev-dev pkg-config
-
+    
       - name: Build
         run: cargo build --verbose
-
+    
       - name: Run tests
         run: cargo test --verbose
