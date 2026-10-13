@@ -24,6 +24,13 @@ impl Arduino {
 
         Ok(())
     }
+
+    pub fn read_bytes(&mut self) -> Result<u8, std::io::Error> {
+        let mut buffer = [0u8; 1];
+        self.port.read_exact(&mut buffer)?;
+
+        Ok(buffer[0])
+    }
 }
 
 pub fn list_ports() -> Result<(), serialport::Error> {
