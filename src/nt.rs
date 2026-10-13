@@ -78,39 +78,37 @@ impl AnimationData {
 pub async fn run() {
     let options = NewClientOptions {
         addr: NTAddr::Local,
-        name: "driver-station-led".to_string(),
+        name: "driverstation-nt-server".to_string(),
         ..Default::default()
     };
 
     let client = Client::new(options);
 
-    match client.connect_setup(setup).await {
-        Ok(_) => {
-            println!("Connected and listening to NetworkTable server");    
-        }
+    println!("Connecting to NetworkTable server...");
 
-        Err(error) => {
-            println!("Failed to connect to the NetworkTable server: {}", error);
-        }
+    if let Err(error) = client.connect_setup(setup).await {
+        println!("NetworkTable connection ended because {}", error);
     }
 }
 
 fn setup(client: &Client) {
-    let animation_type = client.topic("/Leds/Animation/Type");
-    let start_index = client.topic("/Leds/Animation/StartIndex");
-    let end_index = client.topic("Leds/Animation/EndIndex");
+    println!("Connected and listening to NetworkTable server");
 
-    let red = client.topic("Leds/Animation/Red");
-    let green = client.topic("Leds/Animation/Green");
-    let blue = client.topic("Leds/Animation/Blue");
-    let white = client.topic("Leds/Anmation/White");
+    let animation_type = client.topic("/AdvantageKit/RealOutputs/Leds/Animation/Type");
+    let start_index = client.topic("/AdvantageKit/RealOutputs/Leds/Animation/StartIndex");
+    let end_index = client.topic("/AdvantageKit/RealOutputs/Leds/Animation/EndIndex");
 
-    let frame_rate = client.topic("Leds/Animation/FrameRate");
-    let size = client.topic("Leds/Animation/Size");
-    let bounce_mode = client.topic("Leds/Animation/BounceMode");
+    let red = client.topic("/AdvantageKit/RealOutputs/Leds/Animation/Red");
+    let green = client.topic("/AdvantageKit/RealOutputs/Leds/Animation/Green");
+    let blue = client.topic("/AdvantageKit/RealOutputs/Leds/Animation/Blue");
+    let white = client.topic("/AdvantageKit/RealOutputs/Leds/Anmation/White");
 
-    let brightness = client.topic("Leds/Animation/Brightness");
-    let direction = client.topic("Leds/Animation/Direction");
+    let frame_rate = client.topic("/AdvantageKit/RealOutputs/Leds/Animation/FrameRate");
+    let size = client.topic("/AdvantageKit/RealOutputs/Leds/Animation/Size");
+    let bounce_mode = client.topic("/AdvantageKit/RealOutputs/Leds/Animation/BounceMode");
+
+    let brightness = client.topic("/AdvantageKit/RealOutputs/Leds/Animation/Brightness");
+    let direction = client.topic("/AdvantageKit/RealOutputs/Leds/Animation/Direction");
 
     tokio::spawn(async move {
         let mut animation_type_subscriber = animation_type.subscribe(Default::default()).await.unwrap();
@@ -134,6 +132,7 @@ fn setup(client: &Client) {
                     if let Ok(ReceivedMessage::Updated((_topic, value))) = message {
                         if let Some(value) = String::from_value(value) {
                             data.animation_type = value;    
+                            println!("Reading information from animaiton_type subscriber");
                         }
                     }
                 },
@@ -142,6 +141,7 @@ fn setup(client: &Client) {
                     if let Ok(ReceivedMessage::Updated((_topic, value))) = message {
                         if let Some(value) = u16::from_value(value) {
                             data.start_index = value;
+                            println!("Reading information from start_index subscriber");
                         }
                     }
                 },
@@ -150,6 +150,7 @@ fn setup(client: &Client) {
                     if let Ok(ReceivedMessage::Updated((_topic, value))) = message {
                         if let Some(value) = u16::from_value(value) {
                             data.end_index = value;
+                            println!("Reading information from end_index subscriber");
                         }
                     }
                 },
@@ -158,6 +159,7 @@ fn setup(client: &Client) {
                     if let Ok(ReceivedMessage::Updated((_topic, value))) = message {
                         if let Some(value) = u8::from_value(value) {
                             data.red = value;
+                            println!("Reading information from RGBW color red subscriber");
                         }
                     }
                 },
@@ -166,6 +168,7 @@ fn setup(client: &Client) {
                     if let Ok(ReceivedMessage::Updated((_topic, value))) = message {
                         if let Some(value) = u8::from_value(value) {
                             data.green = value;
+                            println!("Reading information from REBW color green subscriber");
                         }
                     }
                 },
@@ -174,6 +177,7 @@ fn setup(client: &Client) {
                     if let Ok(ReceivedMessage::Updated((_topic, value))) = message {
                         if let Some(value) = u8::from_value(value) {
                             data.blue = value;
+                            println!("Reading information from RGBW color blue subscriber");
                         }
                     }
                 },
@@ -182,6 +186,7 @@ fn setup(client: &Client) {
                     if let Ok(ReceivedMessage::Updated((_topic, value))) = message {
                         if let Some(value) = u8::from_value(value) {
                             data.white = value;
+                            println!("Reading information from RGBW color white subscriber");
                         }
                     }
                 },
@@ -190,6 +195,7 @@ fn setup(client: &Client) {
                     if let Ok(ReceivedMessage::Updated((_topic, value))) = message {
                         if let Some(value) = f64::from_value(value) {
                             data.frame_rate = value;
+                            println!("Reading information from frame rate subscriber");
                         }
                     }
                 },
@@ -198,6 +204,7 @@ fn setup(client: &Client) {
                     if let Ok(ReceivedMessage::Updated((_topic, value))) = message {
                         if let Some(value) = u8::from_value(value) {
                             data.size = value;
+                            println!("Reading information from size subscriber");
                         }
                     }
                 },
@@ -206,6 +213,7 @@ fn setup(client: &Client) {
                     if let Ok(ReceivedMessage::Updated((_topic, value))) = message {
                         if let Some(value) = u8::from_value(value) {
                             data.bounce_mode = value;
+                            println!("Reading information from bounce mode subscriber");
                         }
                     }
                 },
@@ -214,6 +222,7 @@ fn setup(client: &Client) {
                     if let Ok(ReceivedMessage::Updated((_topic, value))) = message {
                         if let Some(value) = f64::from_value(value) {
                             data.brightness = value;
+                            println!("Reading information from brightness subscriber");
                         }
                     }
                 },
@@ -222,6 +231,7 @@ fn setup(client: &Client) {
                     if let Ok(ReceivedMessage::Updated((_topic, value))) = message {
                         if let Some(value) = u8::from_value(value) {
                             data.direction = value;
+                            println!("Reading information from direction subscriber")
                         }
                     }
                 }
