@@ -83,9 +83,16 @@ pub async fn run() {
     };
 
     let client = Client::new(options);
-    println!("Connected to NetworkTables...");
 
-    client.connect_setup(setup).await.unwrap();
+    match client.connect_setup(setup).await {
+        Ok(_) => {
+            println!("Connected and listening to NetworkTable server");    
+        }
+
+        Err(error) => {
+            println!("Failed to connect to the NetworkTable server: {}", error);
+        }
+    }
 }
 
 fn setup(client: &Client) {
