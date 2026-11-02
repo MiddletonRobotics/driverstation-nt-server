@@ -13,7 +13,10 @@ use crate::animation::solid_animation::SolidAnimation;
 use crate::animation::strobe_animation::StrobeAnimation;
 use crate::color::RGBWColor;
 
-#[derive(Debug, Default)]
+use tokio::sync::watch;
+use tokio::time::{sleep, Duration};
+
+#[derive(Debug, Default, Clone)]
 pub struct AnimationData {
     pub animation_type: String,
     pub start_index: u16,
@@ -75,25 +78,38 @@ impl AnimationData {
     }
 }
 
-pub async fn run() {
-    let options = NewClientOptions {
-        addr: NTAddr::Local,
-        name: "driverstation-nt-server".to_string(),
-        ..Default::default()
-    };
+pub async fn run(sender: watch::Sender<AnimationData>) {
+    loop {
+        let options = NewClientOptions {
+            addr: NTAddr::Local,
+            name: "driverstation-nt-server".to_string(),
+            ..Default::default()
+        };
 
-    let client = Client::new(options);
+        let client = Client::new(options);
+        println!("Connecting to NetworkTable server...");
 
-    println!("Connecting to NetworkTable server...");
+        let sender = sender.clone();
+        let result = client.connect_setup(move |client| {
+            println!("Connected and listening to NetworkTable server");
+            setup(client, sender.clone());
+        }).await;
 
-    if let Err(error) = client.connect_setup(setup).await {
-        println!("NetworkTable connection ended because {}", error);
+        match result {
+            Ok(_) => {
+                println!("Disconnected from NetworkTable server");
+            }
+
+            Err(error) => {
+                eprintln!("Disconnected from NetworkTable server: {}", error);
+            }
+        }   
+
+        sleep(Duration::from_secs(1)).await;
     }
 }
 
-fn setup(client: &Client) {
-    println!("Connected and listening to NetworkTable server");
-
+fn setup(client: &Client, sender: watch::Sender<AnimationData>) {
     let animation_type = client.topic("/AdvantageKit/RealOutputs/Leds/Animation/Type");
     let start_index = client.topic("/AdvantageKit/RealOutputs/Leds/Animation/StartIndex");
     let end_index = client.topic("/AdvantageKit/RealOutputs/Leds/Animation/EndIndex");
@@ -132,7 +148,9 @@ fn setup(client: &Client) {
                     if let Ok(ReceivedMessage::Updated((_topic, value))) = message {
                         if let Some(value) = String::from_value(value) {
                             data.animation_type = value;    
-                            println!("Reading information from animaiton_type subscriber");
+                            sender.send_replace(data.clone());
+
+                            println!("Received new information from animaiton_type subscriber");
                         }
                     }
                 },
@@ -141,7 +159,9 @@ fn setup(client: &Client) {
                     if let Ok(ReceivedMessage::Updated((_topic, value))) = message {
                         if let Some(value) = u16::from_value(value) {
                             data.start_index = value;
-                            println!("Reading information from start_index subscriber");
+                            sender.send_replace(data.clone());
+
+                            println!("Received new information from start_index subscriber");
                         }
                     }
                 },
@@ -150,7 +170,9 @@ fn setup(client: &Client) {
                     if let Ok(ReceivedMessage::Updated((_topic, value))) = message {
                         if let Some(value) = u16::from_value(value) {
                             data.end_index = value;
-                            println!("Reading information from end_index subscriber");
+                            sender.send_replace(data.clone());
+
+                            println!("Received new information from end_index subscriber");
                         }
                     }
                 },
@@ -159,7 +181,9 @@ fn setup(client: &Client) {
                     if let Ok(ReceivedMessage::Updated((_topic, value))) = message {
                         if let Some(value) = u8::from_value(value) {
                             data.red = value;
-                            println!("Reading information from RGBW color red subscriber");
+                            sender.send_replace(data.clone());
+
+                            println!("Received new information from red RGBW color subscriber");
                         }
                     }
                 },
@@ -168,7 +192,9 @@ fn setup(client: &Client) {
                     if let Ok(ReceivedMessage::Updated((_topic, value))) = message {
                         if let Some(value) = u8::from_value(value) {
                             data.green = value;
-                            println!("Reading information from REBW color green subscriber");
+                            sender.send_replace(data.clone());
+
+                            println!("Received new information from green RGBW color subscriber");
                         }
                     }
                 },
@@ -177,7 +203,9 @@ fn setup(client: &Client) {
                     if let Ok(ReceivedMessage::Updated((_topic, value))) = message {
                         if let Some(value) = u8::from_value(value) {
                             data.blue = value;
-                            println!("Reading information from RGBW color blue subscriber");
+                            sender.send_replace(data.clone());
+
+                            println!("Received new information from blue RGBW color subscriber");
                         }
                     }
                 },
@@ -186,7 +214,9 @@ fn setup(client: &Client) {
                     if let Ok(ReceivedMessage::Updated((_topic, value))) = message {
                         if let Some(value) = u8::from_value(value) {
                             data.white = value;
-                            println!("Reading information from RGBW color white subscriber");
+                            sender.send_replace(data.clone());
+
+                            println!("Received new information from white RGBW color subscriber");
                         }
                     }
                 },
@@ -195,7 +225,9 @@ fn setup(client: &Client) {
                     if let Ok(ReceivedMessage::Updated((_topic, value))) = message {
                         if let Some(value) = f64::from_value(value) {
                             data.frame_rate = value;
-                            println!("Reading information from frame rate subscriber");
+                            sender.send_replace(data.clone());
+
+                            println!("Received new information from frame rate subscriber");
                         }
                     }
                 },
@@ -204,7 +236,9 @@ fn setup(client: &Client) {
                     if let Ok(ReceivedMessage::Updated((_topic, value))) = message {
                         if let Some(value) = u8::from_value(value) {
                             data.size = value;
-                            println!("Reading information from size subscriber");
+                            sender.send_replace(data.clone());
+
+                            println!("Received new information from size subscriber");
                         }
                     }
                 },
@@ -213,7 +247,9 @@ fn setup(client: &Client) {
                     if let Ok(ReceivedMessage::Updated((_topic, value))) = message {
                         if let Some(value) = u8::from_value(value) {
                             data.bounce_mode = value;
-                            println!("Reading information from bounce mode subscriber");
+                            sender.send_replace(data.clone());
+
+                            println!("Received new information from bounce mode subscriber");
                         }
                     }
                 },
@@ -222,7 +258,9 @@ fn setup(client: &Client) {
                     if let Ok(ReceivedMessage::Updated((_topic, value))) = message {
                         if let Some(value) = f64::from_value(value) {
                             data.brightness = value;
-                            println!("Reading information from brightness subscriber");
+                            sender.send_replace(data.clone());
+
+                            println!("Received new information from brightness subscriber");
                         }
                     }
                 },
@@ -231,7 +269,9 @@ fn setup(client: &Client) {
                     if let Ok(ReceivedMessage::Updated((_topic, value))) = message {
                         if let Some(value) = u8::from_value(value) {
                             data.direction = value;
-                            println!("Reading information from direction subscriber")
+                            sender.send_replace(data.clone());
+
+                            println!("Recieved new information from direction subscriber")
                         }
                     }
                 }
