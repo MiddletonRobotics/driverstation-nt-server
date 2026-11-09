@@ -7,7 +7,9 @@ mod animation {
     pub mod solid_animation;
     pub mod strobe_animation;
     pub mod larson_animation;
+    pub mod fade_animation;
     pub mod rainbow_animation;
+    pub mod fire_animation;
 }
 
 use std::thread;
