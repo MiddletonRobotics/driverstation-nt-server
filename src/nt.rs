@@ -7,13 +7,19 @@ use nt_client::NTAddr;
 use crate::animation::animation::Animation;
 use crate::animation::larson_animation::LarsonAnimation;
 use crate::animation::larson_animation::LarsonBounceMode;
-use crate::animation::rainbow_animation::AnimationDirection;
+use crate::animation::rainbow_animation::{AnimationDirection as RainbowAnimationDirection};
+use crate::animation::fire_animation::{AnimationDirection as FireAnimationDirection};
 use crate::animation::rainbow_animation::RainbowAnimation;
 use crate::animation::solid_animation::SolidAnimation;
 use crate::animation::strobe_animation::StrobeAnimation;
+use crate::animation::fade_animation::FadeAnimation;
+use crate::animation::fire_animation::FireAnimation;
 use crate::color::RGBWColor;
 
-#[derive(Debug, Default)]
+use tokio::sync::watch;
+use tokio::time::{sleep, Duration};
+
+#[derive(Debug, Default, Clone)]
 pub struct AnimationData {
     pub animation_type: String,
     pub start_index: u16,
@@ -26,6 +32,8 @@ pub struct AnimationData {
     pub size: u8,
     pub bounce_mode: u8,
     pub brightness: f64,
+    pub cooling: f64,
+    pub sparkling: f64,
     pub direction: u8
 }
 
@@ -58,10 +66,16 @@ impl AnimationData {
                 ))
             }
 
+            "FadeAnimation" => {
+                Ok(Animation::Fade(
+                    FadeAnimation::new(self.start_index, self.end_index, color, self.frame_rate)
+                ))
+            }
+
             "RainbowAnimation" => {
-                let direction: AnimationDirection = match self.direction {
-                    0 => AnimationDirection::FORWARD,
-                    1 => AnimationDirection::BACKWARD,
+                let direction: RainbowAnimationDirection = match self.direction {
+                    0 => RainbowAnimationDirection::FORWARD,
+                    1 => RainbowAnimationDirection::BACKWARD,
                     _ => return Err(())
                 };
 
@@ -70,30 +84,55 @@ impl AnimationData {
                 ))
             }
 
+            "FireAnimation" => {
+                let direction: FireAnimationDirection = match self.direction {
+                    0 => FireAnimationDirection::FORWARD,
+                    1 => FireAnimationDirection::BACKWARD,
+                    _ => return Err(())
+                };
+
+                Ok(Animation::Fire(
+                    FireAnimation::new(self.start_index, self.end_index, self.brightness, self.cooling, self.sparkling, direction, self.frame_rate)
+                ))
+            }
+
             _ => Err(())
         }
     }
 }
 
-pub async fn run() {
-    let options = NewClientOptions {
-        addr: NTAddr::Local,
-        name: "driverstation-nt-server".to_string(),
-        ..Default::default()
-    };
+pub async fn run(sender: watch::Sender<AnimationData>) {
+    loop {
+        let options = NewClientOptions {
+            addr: NTAddr::Local,
+            name: "driverstation-nt-server".to_string(),
+            ..Default::default()
+        };
 
-    let client = Client::new(options);
+        let client = Client::new(options);
+        println!("Connecting to NetworkTable server...");
 
-    println!("Connecting to NetworkTable server...");
+        let sender = sender.clone();
+        let result = client.connect_setup(move |client| {
+            println!("Connected and listening to NetworkTable server");
+            setup(client, sender.clone());
+        }).await;
 
-    if let Err(error) = client.connect_setup(setup).await {
-        println!("NetworkTable connection ended because {}", error);
+        match result {
+            Ok(_) => {
+                println!("Disconnected from NetworkTable server");
+            }
+
+            Err(error) => {
+                eprintln!("Disconnected from NetworkTable server: {}", error);
+            }
+        }   
+
+        sleep(Duration::from_secs(1)).await;
     }
 }
 
-fn setup(client: &Client) {
-    println!("Connected and listening to NetworkTable server");
-
+fn setup(client: &Client, sender: watch::Sender<AnimationData>) {
     let animation_type = client.topic("/AdvantageKit/RealOutputs/Leds/Animation/Type");
     let start_index = client.topic("/AdvantageKit/RealOutputs/Leds/Animation/StartIndex");
     let end_index = client.topic("/AdvantageKit/RealOutputs/Leds/Animation/EndIndex");
@@ -132,7 +171,9 @@ fn setup(client: &Client) {
                     if let Ok(ReceivedMessage::Updated((_topic, value))) = message {
                         if let Some(value) = String::from_value(value) {
                             data.animation_type = value;    
-                            println!("Reading information from animaiton_type subscriber");
+                            sender.send_replace(data.clone());
+
+                            println!("Received new information from animaiton_type subscriber");
                         }
                     }
                 },
@@ -141,7 +182,9 @@ fn setup(client: &Client) {
                     if let Ok(ReceivedMessage::Updated((_topic, value))) = message {
                         if let Some(value) = u16::from_value(value) {
                             data.start_index = value;
-                            println!("Reading information from start_index subscriber");
+                            sender.send_replace(data.clone());
+
+                            println!("Received new information from start_index subscriber");
                         }
                     }
                 },
@@ -150,7 +193,9 @@ fn setup(client: &Client) {
                     if let Ok(ReceivedMessage::Updated((_topic, value))) = message {
                         if let Some(value) = u16::from_value(value) {
                             data.end_index = value;
-                            println!("Reading information from end_index subscriber");
+                            sender.send_replace(data.clone());
+
+                            println!("Received new information from end_index subscriber");
                         }
                     }
                 },
@@ -159,7 +204,9 @@ fn setup(client: &Client) {
                     if let Ok(ReceivedMessage::Updated((_topic, value))) = message {
                         if let Some(value) = u8::from_value(value) {
                             data.red = value;
-                            println!("Reading information from RGBW color red subscriber");
+                            sender.send_replace(data.clone());
+
+                            println!("Received new information from red RGBW color subscriber");
                         }
                     }
                 },
@@ -168,7 +215,9 @@ fn setup(client: &Client) {
                     if let Ok(ReceivedMessage::Updated((_topic, value))) = message {
                         if let Some(value) = u8::from_value(value) {
                             data.green = value;
-                            println!("Reading information from REBW color green subscriber");
+                            sender.send_replace(data.clone());
+
+                            println!("Received new information from green RGBW color subscriber");
                         }
                     }
                 },
@@ -177,7 +226,9 @@ fn setup(client: &Client) {
                     if let Ok(ReceivedMessage::Updated((_topic, value))) = message {
                         if let Some(value) = u8::from_value(value) {
                             data.blue = value;
-                            println!("Reading information from RGBW color blue subscriber");
+                            sender.send_replace(data.clone());
+
+                            println!("Received new information from blue RGBW color subscriber");
                         }
                     }
                 },
@@ -186,7 +237,9 @@ fn setup(client: &Client) {
                     if let Ok(ReceivedMessage::Updated((_topic, value))) = message {
                         if let Some(value) = u8::from_value(value) {
                             data.white = value;
-                            println!("Reading information from RGBW color white subscriber");
+                            sender.send_replace(data.clone());
+
+                            println!("Received new information from white RGBW color subscriber");
                         }
                     }
                 },
@@ -195,7 +248,9 @@ fn setup(client: &Client) {
                     if let Ok(ReceivedMessage::Updated((_topic, value))) = message {
                         if let Some(value) = f64::from_value(value) {
                             data.frame_rate = value;
-                            println!("Reading information from frame rate subscriber");
+                            sender.send_replace(data.clone());
+
+                            println!("Received new information from frame rate subscriber");
                         }
                     }
                 },
@@ -204,7 +259,9 @@ fn setup(client: &Client) {
                     if let Ok(ReceivedMessage::Updated((_topic, value))) = message {
                         if let Some(value) = u8::from_value(value) {
                             data.size = value;
-                            println!("Reading information from size subscriber");
+                            sender.send_replace(data.clone());
+
+                            println!("Received new information from size subscriber");
                         }
                     }
                 },
@@ -213,7 +270,9 @@ fn setup(client: &Client) {
                     if let Ok(ReceivedMessage::Updated((_topic, value))) = message {
                         if let Some(value) = u8::from_value(value) {
                             data.bounce_mode = value;
-                            println!("Reading information from bounce mode subscriber");
+                            sender.send_replace(data.clone());
+
+                            println!("Received new information from bounce mode subscriber");
                         }
                     }
                 },
@@ -222,7 +281,9 @@ fn setup(client: &Client) {
                     if let Ok(ReceivedMessage::Updated((_topic, value))) = message {
                         if let Some(value) = f64::from_value(value) {
                             data.brightness = value;
-                            println!("Reading information from brightness subscriber");
+                            sender.send_replace(data.clone());
+
+                            println!("Received new information from brightness subscriber");
                         }
                     }
                 },
@@ -231,7 +292,9 @@ fn setup(client: &Client) {
                     if let Ok(ReceivedMessage::Updated((_topic, value))) = message {
                         if let Some(value) = u8::from_value(value) {
                             data.direction = value;
-                            println!("Reading information from direction subscriber")
+                            sender.send_replace(data.clone());
+
+                            println!("Recieved new information from direction subscriber")
                         }
                     }
                 }
@@ -258,6 +321,8 @@ mod test {
             size: 0,
             bounce_mode: 0,
             brightness: 0.0,
+            cooling: 0.0,
+            sparkling: 0.0,
             direction: 0
         };
 
@@ -279,6 +344,8 @@ mod test {
             size: 0,
             bounce_mode: 0,
             brightness: 0.0,
+            cooling: 0.0,
+            sparkling: 0.0,
             direction: 0
         };
 
@@ -300,11 +367,36 @@ mod test {
             size: 7,
             bounce_mode: 1,
             brightness: 0.0,
+            cooling: 0.0,
+            sparkling: 0.0,
             direction: 0
         };
 
         let animation: Animation = data.to_animation().unwrap();
         assert_eq!(animation, Animation::Larson(LarsonAnimation::new(20, 80, RGBWColor::new(0, 0, 255, 0), 7, LarsonBounceMode::CENTER, 35.0)));
+    }
+
+    #[test]
+    fn convert_fade_animation_data() {
+        let data: AnimationData = AnimationData {
+            animation_type: "FadeAnimation".to_string(),
+            start_index: 20,
+            end_index: 25,
+            red: 204,
+            green: 109,
+            blue: 212,
+            white: 72,
+            frame_rate: 19.3,
+            size: 0,
+            bounce_mode: 0,
+            brightness: 0.0,
+            cooling: 0.0,
+            sparkling: 0.0,
+            direction: 0
+        };
+
+        let animation: Animation = data.to_animation().unwrap();
+        assert_eq!(animation, Animation::Fade(FadeAnimation::new(20, 25, RGBWColor::new(204, 109, 212, 72), 19.3)));
     }
 
     #[test]
@@ -321,11 +413,36 @@ mod test {
             size: 0,
             bounce_mode: 0,
             brightness: 1.0,
+            cooling: 0.0,
+            sparkling: 0.0,
             direction: 1
         };
 
         let animation: Animation = data.to_animation().unwrap();
-        assert_eq!(animation, Animation::Rainbow(RainbowAnimation::new(30, 50, RGBWColor::new(0, 0, 0, 255), 1.0, AnimationDirection::BACKWARD, 20.0)));
+        assert_eq!(animation, Animation::Rainbow(RainbowAnimation::new(30, 50, RGBWColor::new(0, 0, 0, 255), 1.0, RainbowAnimationDirection::BACKWARD, 20.0)));
+    }
+
+    #[test]
+    fn convert_fire_animation_data() {
+        let data: AnimationData = AnimationData {
+            animation_type: "FireAnimation".to_string(),
+            start_index: 0,
+            end_index: 119,
+            red: 119,
+            green: 20,
+            blue: 255,
+            white: 255,
+            frame_rate: 10.6,
+            size: 0,
+            bounce_mode: 0,
+            brightness: 0.68,
+            cooling: 0.18,
+            sparkling: 0.01,
+            direction: 1
+        };
+
+        let animation: Animation = data.to_animation().unwrap();
+        assert_eq!(animation, Animation::Fire(FireAnimation::new(0, 119, 0.68, 0.18, 0.01, FireAnimationDirection::BACKWARD, 10.6)));
     }
 
     #[test]
@@ -342,6 +459,8 @@ mod test {
             size: 7,
             bounce_mode: 1,
             brightness: 0.0,
+            cooling: 0.0,
+            sparkling: 0.0,
             direction: 0
         };
 
