@@ -14,7 +14,11 @@ const u_size get_packet_size(uint8_t animation_type) {
 		case 2:
 			return 19;
 		case 3:
+			return 16;
+		case 4:
 			return 22;
+		case 5:
+			return 38;
 		default:
 			return 0;
 	}
