@@ -7,10 +7,13 @@ use nt_client::NTAddr;
 use crate::animation::animation::Animation;
 use crate::animation::larson_animation::LarsonAnimation;
 use crate::animation::larson_animation::LarsonBounceMode;
-use crate::animation::rainbow_animation::AnimationDirection;
+use crate::animation::rainbow_animation::{AnimationDirection as RainbowAnimationDirection};
+use crate::animation::fire_animation::{AnimationDirection as FireAnimationDirection};
 use crate::animation::rainbow_animation::RainbowAnimation;
 use crate::animation::solid_animation::SolidAnimation;
 use crate::animation::strobe_animation::StrobeAnimation;
+use crate::animation::fade_animation::FadeAnimation;
+use crate::animation::fire_animation::FireAnimation;
 use crate::color::RGBWColor;
 
 use tokio::sync::watch;
@@ -29,6 +32,8 @@ pub struct AnimationData {
     pub size: u8,
     pub bounce_mode: u8,
     pub brightness: f64,
+    pub cooling: f64,
+    pub sparkling: f64,
     pub direction: u8
 }
 
@@ -61,15 +66,33 @@ impl AnimationData {
                 ))
             }
 
+            "FadeAnimation" => {
+                Ok(Animation::Fade(
+                    FadeAnimation::new(self.start_index, self.end_index, color, self.frame_rate)
+                ))
+            }
+
             "RainbowAnimation" => {
-                let direction: AnimationDirection = match self.direction {
-                    0 => AnimationDirection::FORWARD,
-                    1 => AnimationDirection::BACKWARD,
+                let direction: RainbowAnimationDirection = match self.direction {
+                    0 => RainbowAnimationDirection::FORWARD,
+                    1 => RainbowAnimationDirection::BACKWARD,
                     _ => return Err(())
                 };
 
                 Ok(Animation::Rainbow(
                     RainbowAnimation::new(self.start_index, self.end_index, color, self.brightness, direction, self.frame_rate)
+                ))
+            }
+
+            "FireAnimation" => {
+                let direction: FireAnimationDirection = match self.direction {
+                    0 => FireAnimationDirection::FORWARD,
+                    1 => FireAnimationDirection::BACKWARD,
+                    _ => return Err(())
+                };
+
+                Ok(Animation::Fire(
+                    FireAnimation::new(self.start_index, self.end_index, self.brightness, self.cooling, self.sparkling, direction, self.frame_rate)
                 ))
             }
 
@@ -298,6 +321,8 @@ mod test {
             size: 0,
             bounce_mode: 0,
             brightness: 0.0,
+            cooling: 0.0,
+            sparkling: 0.0,
             direction: 0
         };
 
@@ -319,6 +344,8 @@ mod test {
             size: 0,
             bounce_mode: 0,
             brightness: 0.0,
+            cooling: 0.0,
+            sparkling: 0.0,
             direction: 0
         };
 
@@ -340,11 +367,36 @@ mod test {
             size: 7,
             bounce_mode: 1,
             brightness: 0.0,
+            cooling: 0.0,
+            sparkling: 0.0,
             direction: 0
         };
 
         let animation: Animation = data.to_animation().unwrap();
         assert_eq!(animation, Animation::Larson(LarsonAnimation::new(20, 80, RGBWColor::new(0, 0, 255, 0), 7, LarsonBounceMode::CENTER, 35.0)));
+    }
+
+    #[test]
+    fn convert_fade_animation_data() {
+        let data: AnimationData = AnimationData {
+            animation_type: "FadeAnimation".to_string(),
+            start_index: 20,
+            end_index: 25,
+            red: 204,
+            green: 109,
+            blue: 212,
+            white: 72,
+            frame_rate: 19.3,
+            size: 0,
+            bounce_mode: 0,
+            brightness: 0.0,
+            cooling: 0.0,
+            sparkling: 0.0,
+            direction: 0
+        };
+
+        let animation: Animation = data.to_animation().unwrap();
+        assert_eq!(animation, Animation::Fade(FadeAnimation::new(20, 25, RGBWColor::new(204, 109, 212, 72), 19.3)));
     }
 
     #[test]
@@ -361,11 +413,36 @@ mod test {
             size: 0,
             bounce_mode: 0,
             brightness: 1.0,
+            cooling: 0.0,
+            sparkling: 0.0,
             direction: 1
         };
 
         let animation: Animation = data.to_animation().unwrap();
-        assert_eq!(animation, Animation::Rainbow(RainbowAnimation::new(30, 50, RGBWColor::new(0, 0, 0, 255), 1.0, AnimationDirection::BACKWARD, 20.0)));
+        assert_eq!(animation, Animation::Rainbow(RainbowAnimation::new(30, 50, RGBWColor::new(0, 0, 0, 255), 1.0, RainbowAnimationDirection::BACKWARD, 20.0)));
+    }
+
+    #[test]
+    fn convert_fire_animation_data() {
+        let data: AnimationData = AnimationData {
+            animation_type: "FireAnimation".to_string(),
+            start_index: 0,
+            end_index: 119,
+            red: 119,
+            green: 20,
+            blue: 255,
+            white: 255,
+            frame_rate: 10.6,
+            size: 0,
+            bounce_mode: 0,
+            brightness: 0.68,
+            cooling: 0.18,
+            sparkling: 0.01,
+            direction: 1
+        };
+
+        let animation: Animation = data.to_animation().unwrap();
+        assert_eq!(animation, Animation::Fire(FireAnimation::new(0, 119, 0.68, 0.18, 0.01, FireAnimationDirection::BACKWARD, 10.6)));
     }
 
     #[test]
@@ -382,6 +459,8 @@ mod test {
             size: 7,
             bounce_mode: 1,
             brightness: 0.0,
+            cooling: 0.0,
+            sparkling: 0.0,
             direction: 0
         };
 
